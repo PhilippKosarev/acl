@@ -1,4 +1,4 @@
-# ACMM
+# ACL
 A launcher for Assetto Corsa. Written in Python, utilises [libjam](https://github.com/PhilippKosarev/libjam).
 
 ## Features
