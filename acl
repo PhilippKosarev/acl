@@ -92,6 +92,11 @@ class CLI:
         exit_code = ac_launcher.validate_ac_files()
         if exit_code == 1:
           typewriter.print('Steam is not running.')
+    elif exit_code == 3:
+      print('Assetto Corsa is already running.')
+      if flashcard.yn_prompt("Stop Assetto Corsa?"):
+        ac_launcher.kill_ac()
+        print('Assetto Corsa was stopped.')
 
 cli = CLI()
 

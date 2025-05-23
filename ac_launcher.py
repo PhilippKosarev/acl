@@ -18,20 +18,20 @@ def is_process_running(process_list: list):
         return True
   return False
 
-def kill_ac():
-  for process in psutil.process_iter():
-    for item in AC_PROCESSES:
-      if process.name() == item:
-        process.kill()
-        return 0
-  return 1
-
 # Responsible for launching AC
 class ACLauncher:
   def __init__(self, config: dict, options=None):
     self.AC_DIR = config.get('paths').get('AC_DIR')
     self.STEAM_EXEC = config.get('paths').get('STEAM_EXEC')
     self.options = options
+  
+  def kill_ac(self):
+    for process in psutil.process_iter():
+      for item in AC_PROCESSES:
+        if process.name() == item:
+          process.kill()
+          return 0
+    return 1
 
   def launch_ac_via_steam(self, launched_notification_func=None, closed_notification_func=None):
     # Renaming files before execution so Steam launches the desired executable
@@ -65,6 +65,8 @@ class ACLauncher:
     # Checking if steam is running
     if is_process_running(STEAM_PROCESSES) is False:
       return 1
+    elif is_process_running(AC_PROCESSES) is True:
+      return 3
 
     ac_files = drawer.get_files(self.AC_DIR)
     exit_code = prepare_files_for_execution(ac_files)
@@ -100,7 +102,7 @@ class ACLauncher:
     except KeyboardInterrupt:
       if is_process_running(AC_PROCESSES):
         typewriter.print('Stopping Assetto Corsa.')
-        kill_ac()
+        self.kill_ac()
 
     exit_code = reset_filenames(ac_files)
     if exit_code != 0:
