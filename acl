@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 # Imports
-import sys, platform
+import sys, os, platform
 from libjam import Captain, Drawer, Typewriter, Notebook, Flashcard
 from ac_launcher import ACLauncher
 
@@ -14,9 +14,11 @@ flashcard = Flashcard()
 
 # Handling config
 HOME = drawer.get_home()
+script_folder = os.path.dirname(os.path.realpath(__file__))
+CONFIG_TEMPLATE_FILE = f"{script_folder}/config.toml.in"
 CONFIG_DIR = f"{HOME}/.config/acl"
 CONFIG_FILE = f"{CONFIG_DIR}/config.toml"
-notebook.check_config(CONFIG_FILE)
+notebook.check_config(CONFIG_TEMPLATE_FILE, CONFIG_FILE)
 config = notebook.read_toml(CONFIG_FILE)
 
 # Finding AC_DIR
