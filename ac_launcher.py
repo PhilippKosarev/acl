@@ -92,7 +92,6 @@ class ACLauncher:
         time.sleep(0.1)
       on_ac_started()
       time.sleep(1)
-      if on_ac_started is not None:
       # Waiting until AC stops
       try:
         while True:
