@@ -73,6 +73,7 @@ class ACLauncher:
       on_steam_not_running()
     elif is_process_running(AC_PROCESSES) is True:
       on_already_running()
+      return
 
     ac_files = drawer.get_files(self.AC_DIR)
     successful = prepare_files_for_execution(ac_files)
