@@ -37,7 +37,7 @@ class ACLauncher:
     self,
     on_ac_started, on_ac_stopped,
     on_steam_not_running, on_renaming_error,
-    already_running,
+    on_already_running,
   ):
     # Renaming files before execution so Steam launches the desired executable
     def prepare_files_for_execution(ac_files):
@@ -72,7 +72,7 @@ class ACLauncher:
     if is_process_running(STEAM_PROCESSES) is False:
       on_steam_not_running()
     elif is_process_running(AC_PROCESSES) is True:
-      return 3
+      on_already_running()
 
     ac_files = drawer.get_files(self.AC_DIR)
     successful = prepare_files_for_execution(ac_files)
