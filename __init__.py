@@ -1,1 +1,1 @@
-from .ac_launcher.py import *
+from .ac_launcher import *

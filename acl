@@ -75,30 +75,34 @@ config['paths']['STEAM_EXEC'] = STEAM_EXEC
 class CLI:
   # Interface to list installed mods
   def steam(self):
+    # Defining how to handle events
     def print_ac_launched():
       typewriter.print_status('Assetto Corsa was launched.')
     def print_ac_closed():
       typewriter.print('Assetto Corsa was stopped.')
-
-    typewriter.print_status('Starting Assetto Corsa...')
-    exit_code = ac_launcher.launch_ac_via_steam(
-      launched_notification_func=print_ac_launched,
-      closed_notification_func=print_ac_closed,
-    )
-    if exit_code == 1:
+    def steam_not_running():
       typewriter.print('Steam is not running.')
-    elif exit_code == 2:
+      return
+    def renaming_error():
       typewriter.print("Assetto Corsa's executable files weren't successfully renamed, likely due to filenames being messsed up.")
       if flashcard.yn_prompt("Ask Steam to valiadate Assetto Corsa's files?"):
         typewriter.print("Validating Assetto Corsa's files.")
-        exit_code = ac_launcher.validate_ac_files()
-        if exit_code == 1:
-          typewriter.print('Steam is not running.')
-    elif exit_code == 3:
+        ac_launcher.validate_ac_files(steam_not_running)
+        return
+      print('Aborting.')
+    def already_running():
       print('Assetto Corsa is already running.')
       if flashcard.yn_prompt("Stop Assetto Corsa?"):
         ac_launcher.kill_ac()
         print('Assetto Corsa was stopped.')
+    # Starting
+    typewriter.print_status('Starting Assetto Corsa...')
+    ac_launcher.launch_ac_via_steam(
+      print_ac_launched, print_ac_closed,
+      steam_not_running, renaming_error,
+      already_running,
+    )
+
 
 cli = CLI()
 

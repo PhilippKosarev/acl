@@ -1,5 +1,5 @@
 # Imports
-import psutil, subprocess, psutil, time
+import psutil, subprocess, psutil, time, asyncio
 from libjam import Drawer, Clipboard, Typewriter
 
 # Jam objects
@@ -33,7 +33,12 @@ class ACLauncher:
           return 0
     return 1
 
-  def launch_ac_via_steam(self, launched_notification_func=None, closed_notification_func=None):
+  def launch_ac_via_steam(
+    self,
+    on_ac_started, on_ac_stopped,
+    on_steam_not_running, on_renaming_error,
+    already_running,
+  ):
     # Renaming files before execution so Steam launches the desired executable
     def prepare_files_for_execution(ac_files):
       try:
@@ -45,9 +50,9 @@ class ACLauncher:
         else:
           drawer.rename(self.AC_DIR, 'AssettoCorsa.exe', 'AssettoCorsa.old')
           drawer.rename(self.AC_DIR, 'acs.exe', 'AssettoCorsa.exe')
-        return 0
+        return True
       except:
-        return 2
+        return False
     # Renaming files back to their original filenames
     def reset_filenames(ac_files):
       try:
@@ -59,61 +64,63 @@ class ACLauncher:
         else:
           drawer.rename(self.AC_DIR, 'AssettoCorsa.exe', 'acs.exe')
           drawer.rename(self.AC_DIR, 'AssettoCorsa.old', 'AssettoCorsa.exe')
-        return 0
+        return True
       except:
-        return 2
+        return False
+
     # Checking if steam is running
     if is_process_running(STEAM_PROCESSES) is False:
-      return 1
+      on_steam_not_running()
     elif is_process_running(AC_PROCESSES) is True:
       return 3
 
     ac_files = drawer.get_files(self.AC_DIR)
-    exit_code = prepare_files_for_execution(ac_files)
-    if exit_code != 0:
-      return exit_code
+    successful = prepare_files_for_execution(ac_files)
+    if successful is False:
+      on_renaming_error()
+      return
 
-    # Running AC
-    subprocess.run([self.STEAM_EXEC, 'steam://rungameid/244210'])
-    time.sleep(2)
-    # Waiting until AC starts
-    while True:
-      try:
+    async def start():
+      # Starting AC
+      subprocess.run([self.STEAM_EXEC, 'steam://rungameid/244210'])
+      time.sleep(2)
+
+      # Waiting until AC starts
+      while True:
         if is_process_running(AC_PROCESSES) is True:
           break
         time.sleep(0.1)
+      on_ac_started()
+      time.sleep(1)
+      if on_ac_started is not None:
+      # Waiting until AC stops
+      try:
+        while True:
+          if is_process_running(AC_PROCESSES) is False:
+            break
+          time.sleep(0.1)
+
+        if on_ac_stopped is not None:
+          on_ac_stopped()
+
       except KeyboardInterrupt:
-        print('Cannot cancel launching Assetto Corsa before it launched.')
+        if is_process_running(AC_PROCESSES):
+          typewriter.print('Stopping Assetto Corsa.')
+          self.kill_ac()
 
-    time.sleep(2)
+    asyncio.run(start())
 
-    if launched_notification_func is not None:
-      launched_notification_func()
-    # Waiting until AC stops
-    try:
-      while True:
-        if is_process_running(AC_PROCESSES) is False:
-          break
-        time.sleep(0.1)
-
-      if closed_notification_func is not None:
-        closed_notification_func()
-
-    except KeyboardInterrupt:
-      if is_process_running(AC_PROCESSES):
-        typewriter.print('Stopping Assetto Corsa.')
-        self.kill_ac()
-
-    exit_code = reset_filenames(ac_files)
-    if exit_code != 0:
-      return exit_code
+    successful = reset_filenames(ac_files)
+    if successful is False:
+      on_renaming_error()
+      return
 
     return 0
 
-  def validate_ac_files(self):
+  def validate_ac_files(self, on_steam_not_running):
     # Checking if steam is running
     if is_process_running(STEAM_PROCESSES) is False:
-      return 1
-
+      on_steam_not_running()
+      return
     # Running validation
     subprocess.run([self.STEAM_EXEC, 'steam://validate/244210'])
