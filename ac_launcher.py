@@ -1,5 +1,5 @@
 # Imports
-import psutil, subprocess, psutil, time, asyncio
+import psutil, subprocess, psutil, time
 from libjam import Drawer, Clipboard, Typewriter
 
 # Jam objects
@@ -80,34 +80,31 @@ class ACLauncher:
       on_renaming_error()
       return
 
-    async def start():
-      # Starting AC
-      subprocess.run([self.STEAM_EXEC, 'steam://rungameid/244210'])
-      time.sleep(2)
+    # Starting AC
+    subprocess.run([self.STEAM_EXEC, 'steam://rungameid/244210'])
+    time.sleep(2)
 
-      # Waiting until AC starts
+    # Waiting until AC starts
+    while True:
+      if is_process_running(AC_PROCESSES) is True:
+        break
+      time.sleep(0.1)
+    on_ac_started()
+    time.sleep(1)
+    # Waiting until AC stops
+    try:
       while True:
-        if is_process_running(AC_PROCESSES) is True:
+        if is_process_running(AC_PROCESSES) is False:
           break
         time.sleep(0.1)
-      on_ac_started()
-      time.sleep(1)
-      # Waiting until AC stops
-      try:
-        while True:
-          if is_process_running(AC_PROCESSES) is False:
-            break
-          time.sleep(0.1)
 
-        if on_ac_stopped is not None:
-          on_ac_stopped()
+      if on_ac_stopped is not None:
+        on_ac_stopped()
 
-      except KeyboardInterrupt:
-        if is_process_running(AC_PROCESSES):
-          typewriter.print('Stopping Assetto Corsa.')
-          self.kill_ac()
-
-    asyncio.run(start())
+    except KeyboardInterrupt:
+      if is_process_running(AC_PROCESSES):
+        typewriter.print('Stopping Assetto Corsa.')
+        self.kill_ac()
 
     successful = reset_filenames(ac_files)
     if successful is False:
