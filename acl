@@ -2,17 +2,17 @@
 
 # Imports
 import sys, os, platform
-from libjam import Captain, Drawer, Typewriter, Notebook, Flashcard
-from ac_launcher import ACLauncher
 
-# Jam objects
+# Jamlauncher
+from libjam import Captain, Drawer, Typewriter, Notebook, Flashcard
 captain = Captain()
 drawer = Drawer()
 typewriter = Typewriter()
 notebook = Notebook()
 flashcard = Flashcard()
 
-# Handling config
+
+# Getting configuration
 HOME = drawer.get_home()
 script_folder = os.path.dirname(os.path.realpath(__file__))
 CONFIG_TEMPLATE_FILE = f"{script_folder}/config.toml.in"
@@ -21,60 +21,42 @@ CONFIG_FILE = f"{CONFIG_DIR}/config.toml"
 notebook.check_config(CONFIG_TEMPLATE_FILE, CONFIG_FILE)
 config = notebook.read_toml(CONFIG_FILE)
 
-# Finding AC_DIR
+# Initialising data
+from data import Data
+data = Data()
+
+# Getting AC_DIR
 AC_DIR = config.get('paths').get("AC_DIR")
-ac_path_suffix = "steamapps/common/assettocorsa"
-likely_ac_dirs = [f"{HOME}/.local/share/Steam/{ac_path_suffix}",
-f"{HOME}/.var/app/com.valvesoftware.Steam/data/Steam/{ac_path_suffix}",
-f"C:/Program Files (x86)/Steam/{ac_path_suffix}"]
-if AC_DIR == None:
-  for directory in likely_ac_dirs:
-    if drawer.is_folder(directory):
-      AC_DIR = directory
-# Checking AC_DIR
-if AC_DIR == None:
-  print(f"Assetto Corsa folder not found.\n\
-If Assetto Corsa is not installed in the default location, you might need to specify the path to '{assettocorsa}' in '{CONFIG_FILE}'.")
-  sys.exit(-1)
-if drawer.is_folder(AC_DIR) is False:
+if AC_DIR is None:
+  AC_DIR = data.get_ac_dir()
+  if AC_DIR is None:
+    print(f"""Assetto Corsa folder not found.
+If Assetto Corsa is not installed in the default location, please specify the path to '/steamapps/common/assettocorsa' in '{CONFIG_FILE}'.""")
+    sys.exit(-1)
+elif drawer.is_folder(AC_DIR) is False:
   print(f"Path to Assetto Corsa's folder specified in '{CONFIG_FILE}' does not exist.")
   sys.exit(-1)
-if AC_DIR.endswith(ac_path_suffix) is False:
-  print(f'''Path to Assetto Corsa in '{CONFIG_FILE}' is incorrect. It should end with '{assettocorsa}'.)
-Currently specified AC directory:\n{AC_DIR}''')
-  sys.exit(-1)
-config['paths']['AC_DIR'] = AC_DIR
 
-# Setting variables depending on OS
+# Getting STEAM_EXEC
 STEAM_EXEC = config.get('paths').get('STEAM_EXEC')
-if STEAM_EXEC == None:
-  OS = platform.system()
-  if OS == 'Linux':
-    if drawer.is_file('/bin/steam'):
-      STEAM_EXEC = '/bin/steam'
-    elif drawer.is_folder(f"{HOME}/.var/app/com.valvesoftware.Steam"):
-      STEAM_EXEC = 'flatpak run com.valvesoftware.Steam'
-  elif OS == 'Windows':
-    if drawer.is_file('C:/Program Files (x86)/Steam/steam.exe'):
-      STEAM_EXEC = 'C:/Program Files (x86)/Steam/steam.exe'
-  else:
-    print(f"{OS} is not currently supported.")
-  if STEAM_EXEC == None:
-    print()
-# Checking STEAM_EXEC
-if STEAM_EXEC == None:
-  print(f"Steam executable file not found.\n\
-If Steam is not installed in the default location, you might need to specify the path to the Steam executable in '{CONFIG_FILE}'.")
-  sys.exit(-1)
+if STEAM_EXEC is None:
+  STEAM_EXEC = data.get_steam_exec()
+  if STEAM_EXEC is None:
+    print(f"""Steam executable file not found.\n\
+If Steam is not installed in the default location, please specify the path to the Steam executable in '{CONFIG_FILE}'.""")
+    sys.exit(-1)
 elif drawer.is_file(STEAM_EXEC) is False:
-  print(f"Path to Steam's executable specified in '{CONFIG_FILE}' does not exist.")
+  print(f"Path to Steam executable specified in '{CONFIG_FILE}' does not exist.")
   sys.exit(-1)
-config['paths']['STEAM_EXEC'] = STEAM_EXEC
 
-# The command line interface functions
+# Initialising ac launcher
+from launcher import Launcher
+launcher = Launcher(AC_DIR, STEAM_EXEC)
+
+# The command line interface
 class CLI:
   # Interface to list installed mods
-  def steam(self):
+  def steam_launch(self):
     # Defining how to handle events
     def print_ac_launched():
       typewriter.print_status('Assetto Corsa was launched.')
@@ -83,26 +65,24 @@ class CLI:
     def steam_not_running():
       typewriter.print('Steam is not running.')
       return
-    def renaming_error():
+    def rename_error():
       typewriter.print("Assetto Corsa's executable files weren't successfully renamed, likely due to filenames being messsed up.")
-      if flashcard.yn_prompt("Ask Steam to valiadate Assetto Corsa's files?"):
+      if flashcard.yn_prompt("Ask Steam to validate Assetto Corsa's files?"):
+        launcher.validate_ac_files(steam_not_running)
         typewriter.print("Validating Assetto Corsa's files.")
-        ac_launcher.validate_ac_files(steam_not_running)
         return
-      print('Aborting.')
     def already_running():
       print('Assetto Corsa is already running.')
       if flashcard.yn_prompt("Stop Assetto Corsa?"):
-        ac_launcher.kill_ac()
+        launchercher.kill_ac()
         print('Assetto Corsa was stopped.')
     # Starting
     typewriter.print_status('Starting Assetto Corsa...')
-    ac_launcher.launch_ac_via_steam(
+    launcher.launch_ac_via_steam(
       print_ac_launched, print_ac_closed,
-      steam_not_running, renaming_error,
+      steam_not_running, rename_error,
       already_running,
     )
-
 
 cli = CLI()
 
@@ -111,7 +91,7 @@ app = "acl"
 description = "Assetto Corsa Launcher can launch Assetto Corsa without the use of the original launcher"
 # help = "" # If you wish to set your own help page text
 commands = {
-  'steam-launch':     {'function': cli.steam,
+  'steam-launch':     {'function': cli.steam_launch,
   'description': 'Starts Assetto Corsa using Steam'},
 }
 options = {
@@ -126,6 +106,7 @@ help = captain.generate_help(app, description, commands, options)
 interpretation = captain.interpret(app, help, commands, arguments, options)
 function = interpretation.get('function')
 options = interpretation.get('options')
-ac_launcher = ACLauncher(config, options)
+original_launcher = options.get('original').get('enabled')
+launcher = Launcher(AC_DIR, STEAM_EXEC, original_launcher)
 # Executing function
 exec(f"cli.{function}")
