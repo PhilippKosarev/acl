@@ -20,6 +20,8 @@ def is_process_running(process_list: list):
   return False
 # Batch renames a list of tuples of files
 def batch_rename(directory: str, renames: list, reverse = False):
+  if reverse:
+    renames.reverse()
   for pair in renames:
     if reverse: old = pair[1]; new = pair[0]
     else:       old = pair[0]; new = pair[1]
