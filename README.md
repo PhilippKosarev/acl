@@ -8,7 +8,7 @@ A launcher for Assetto Corsa. Written in Python, utilises [libjam](https://githu
 ## How to run ACL
 Installing the dependencies:
 ```
-pip install toml Send2Trash patool rarfile pathlib
+pip install libjam
 ```
 
 Cloning the repo:
