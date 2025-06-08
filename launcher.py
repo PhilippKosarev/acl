@@ -27,16 +27,15 @@ def batch_rename(directory: str, renames: list, reverse = False):
     else:       old = pair[0]; new = pair[1]
     try:
       drawer.rename(directory, old, new)
-    except:
+    except FileNotFoundError:
       return False
   return True
 
 # Responsible for launching AC
 class Launcher:
 
-  def __init__(self, AC_DIR: str, STEAM_EXEC: str, original_launcher=False):
+  def __init__(self, AC_DIR: str, original_launcher=False):
     self.AC_DIR = AC_DIR
-    self.STEAM_EXEC = STEAM_EXEC
     self.original_launcher = original_launcher
 
 
@@ -82,7 +81,7 @@ class Launcher:
       return on_renaming_error()
 
     # Starting AC
-    subprocess.run([self.STEAM_EXEC, 'steam://rungameid/244210'])
+    drawer.open('steam://rungameid/244210')
 
     try:
       # Waiting until AC starts
@@ -92,7 +91,7 @@ class Launcher:
         time.sleep(0.1)
       on_ac_started()
       time.sleep(1)
-    except KeyboardInterrupt:
+    except:
       if do_renames(True) is False:
         return on_renaming_error()
     # Waiting until AC stops
@@ -119,21 +118,13 @@ class Launcher:
       on_steam_not_running()
       return
     # Running validation
-    subprocess.run([self.STEAM_EXEC, 'steam://validate/244210'])
+    drawer.open('steam://validate/244210')
 
   def check_files(self, on_ac_dir, on_steam_exec):
     # Checking AC dir
     if self.AC_DIR is None:
       on_ac_dir()
-      return
+      return 1
     if drawer.is_folder(self.AC_DIR) is False:
       on_ac_dir()
-      return
-    # Checking steam exec
-    if self.STEAM_EXEC is None:
-      on_steam_exec()
-      return
-    if self.STEAM_EXEC.startswith('/'):
-      if drawer.is_file(self.STEAM_EXEC) is False:
-        on_steam_exec()
-        return
+      return 1

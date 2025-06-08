@@ -1,2 +1,2 @@
-libjam==0.0.4
+libjam==0.0.10
 psutil==6.1.1

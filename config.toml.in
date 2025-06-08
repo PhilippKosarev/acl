@@ -1,5 +1,3 @@
 [paths]
 # Override for the default AC_DIR folder
 # AC_DIR = ""
-# Override for the default STEAM_EXEC folder
-# STEAM_EXEC = ""

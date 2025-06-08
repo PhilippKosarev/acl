@@ -37,21 +37,9 @@ elif drawer.is_folder(AC_DIR) is False:
   print(f"Path to Assetto Corsa's folder specified in '{CONFIG_FILE}' does not exist.")
   sys.exit(-1)
 
-# Getting STEAM_EXEC
-STEAM_EXEC = config.get('paths').get('STEAM_EXEC')
-if STEAM_EXEC is None:
-  STEAM_EXEC = data.get_steam_exec()
-  if STEAM_EXEC is None:
-    print(f"""Steam executable file not found.\n\
-If Steam is not installed in the default location, please specify the path to the Steam executable in '{CONFIG_FILE}'.""")
-    sys.exit(-1)
-elif drawer.is_file(STEAM_EXEC) is False:
-  print(f"Path to Steam executable specified in '{CONFIG_FILE}' does not exist.")
-  sys.exit(-1)
-
 # Initialising ac launcher
 from launcher import Launcher
-launcher = Launcher(AC_DIR, STEAM_EXEC)
+launcher = Launcher(AC_DIR)
 
 # The command line interface
 class CLI:
@@ -107,6 +95,6 @@ interpretation = captain.interpret(app, help, commands, arguments, options)
 function = interpretation.get('function')
 options = interpretation.get('options')
 original_launcher = options.get('original').get('enabled')
-launcher = Launcher(AC_DIR, STEAM_EXEC, original_launcher)
+launcher = Launcher(AC_DIR, original_launcher)
 # Executing function
 exec(f"cli.{function}")
