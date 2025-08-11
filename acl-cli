@@ -1,0 +1,111 @@
+#! /usr/bin/python
+
+# Imports
+from libjam import captain, drawer, typewriter, notebook, flashcard
+import sys, os
+
+# Internal imports
+import acl
+launcher = acl.Launcher()
+
+# Getting configuration
+HOME = drawer.get_home()
+script_folder = os.path.dirname(os.path.realpath(__file__))
+CONFIG_TEMPLATE_FILE = f"{script_folder}/config.toml.in"
+CONFIG_DIR = f"{HOME}/.config/acl"
+CONFIG_FILE = f"{CONFIG_DIR}/config.toml"
+notebook.check_config(CONFIG_TEMPLATE_FILE, CONFIG_FILE)
+config = notebook.read_toml(CONFIG_FILE)
+
+# Getting AC_DIR
+AC_DIR = config.get('paths').get('AC_DIR')
+if AC_DIR is None:
+  common_ac_dirs = acl.data.get('common_ac_dirs')
+  for path in common_ac_dirs:
+    if drawer.is_folder(path):
+      AC_DIR = path
+  if AC_DIR is None:
+    print(f"""\
+Assetto Corsa folder not found.
+If Assetto Corsa is not installed in the default location, please specify the path to '/steamapps/common/assettocorsa' in '{CONFIG_FILE}'.\
+""")
+    sys.exit(-1)
+elif not drawer.is_folder(AC_DIR):
+  print(f"Path to Assetto Corsa's folder specified in '{CONFIG_FILE}' does not exist.")
+  sys.exit(-1)
+
+# Helper functions
+def on_ac_launched():
+  typewriter.print_status('Assetto Corsa started.')
+
+def on_ac_stopped():
+  typewriter.print('Assetto Corsa stopped.')
+
+def steam_launch():
+  # Starting
+  typewriter.print_status('Starting Assetto Corsa...')
+  try:
+    launcher.launch_ac_via_steam(
+      AC_DIR,
+      on_ac_launched,
+      on_ac_stopped,
+    )
+  except acl.RenamingError:
+    typewriter.print(
+      "Assetto Corsa's executable files weren't successfully renamed, likely due to filenames being messed up."
+    )
+    if flashcard.yn_prompt(
+      "Ask Steam to validate Assetto Corsa's files to fix it?"
+    ):
+      launcher.validate_ac_files(AC_DIR)
+      typewriter.print("Validating Assetto Corsa's files.")
+  except acl.SteamNotRunningError:
+    typewriter.print('Steam is not running.')
+  except acl.AlreadyRunningError:
+    typewriter.print('Assetto Corsa is already running.')
+    if flashcard.yn_prompt('Stop Assetto Corsa?'):
+      launcher.kill_ac()
+      on_ac_stopped()
+  except KeyboardInterrupt:
+    launcher.kill_ac()
+    on_ac_stopped()
+
+# The command line interface
+class CLI:
+
+  def start(self):
+    steam_launch()
+
+  def stop(self):
+    if launcher.kill_ac():
+      on_ac_stopped()
+    else:
+      typewriter.print('Assetto Corsa is not running.')
+
+# Inputs/Commands/Options configuration
+app = "acl-cli"
+description = "Assetto Corsa Launcher."
+commands = {
+  'start': {
+    'function': CLI.start,
+    'description': 'Starts Assetto Corsa',
+  },
+  'stop': {
+    'function': CLI.stop,
+    'description': 'Stops Assetto Corsa',
+  },
+}
+options = {
+  'steam': {
+    'long': ['steam'], 'short': ['s'],
+    'description': 'Starts Assetto Corsa by asking Steam to do it',
+  },
+}
+
+# Getting program arguments
+help = captain.generate_help(app, description, commands)
+interpretation = captain.interpret(app, help, commands, options)
+function = interpretation.get('function')
+options = interpretation.get('options')
+# Executing function
+exec(f"CLI().{function}")
